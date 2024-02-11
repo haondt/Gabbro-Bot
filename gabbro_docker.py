@@ -1,6 +1,9 @@
 import fabric
 import environment
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 def connection():
     return fabric.Connection(
@@ -14,8 +17,11 @@ def get_containers():
         return result.stdout.strip().split('\n')
 
 async def run(conn, hook, command):
+    logger.info(f'Running command: `{command}`')
     await hook(f'Running command: `{command}`...\n')
     result = conn.run(command, hide=True, warn=True, pty=False)
+    logger.info(f'Command `{command}` stdout:\n{result.stdout}')
+    logger.info(f'Command `{command}` stderr:\n{result.stderr}')
     if result.exited != 0:
         await hook(result.stdout or result.stderr)
         raise Exception('Failed to execute correctly')
