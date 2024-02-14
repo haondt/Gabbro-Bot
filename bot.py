@@ -1,3 +1,4 @@
+from collections.abc import Callable, Coroutine
 import environment
 import discord
 from discord import app_commands
@@ -59,6 +60,10 @@ def create_client():
     client = discord.Client(intents=intents)
     tree = app_commands.CommandTree(client)
 
+    async def container_list_autocompletion(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+        data = [app_commands.Choice(name=f'{i}', value=str(i)) for i in state.get_containers() if current.lower() in f'{i}'.lower()]
+        return data
+
     @client.event
     async def on_ready():
         logger.info(f'{client.user} has connected to Discord')
@@ -77,9 +82,24 @@ def create_client():
             status_message.fail()
         await interaction.response.send_message(status_message.render())
 
-    @tree.command(name="startall", description='start all containers')
-    async def start_all(interaction: discord.Interaction):
-        status_message = StatusMessage(f'Start all containers')
+    @tree.command(name="version", description='get container version')
+    @app_commands.describe(container='Container to check version')
+    @app_commands.autocomplete(container=container_list_autocompletion)
+    async def version(interaction: discord.Interaction, container: str):
+        status_message = StatusMessage(f'Get {container} version')
+        try:
+            container_version = await docker.get_container_version(container)
+            status_message.add_logs(container_version)
+            status_message.finish()
+        except:
+            status_message.add_logs("container is missing label \'org.opencontainers.image.version'")
+            status_message.fail()
+        await interaction.response.send_message(status_message.render())
+
+    async def execute(interaction: discord.Interaction, 
+                             name: str,
+                             func: Callable[[Callable[[str],Coroutine]], Coroutine]):
+        status_message = StatusMessage(name)
         async def hook(log_segment):
             nonlocal status_message
             status_message.add_logs(log_segment)
@@ -87,39 +107,95 @@ def create_client():
         await interaction.response.send_message(status_message.render())
 
         try:
-            await docker.start_all_containers(hook)
+            await func(hook)
             status_message.finish()
         except:
             status_message.fail()
         await interaction.edit_original_response(content=status_message.render())
+
+
+    @tree.command(name="startall", description='start all containers')
+    async def start_all(interaction: discord.Interaction):
+        await execute(interaction, 
+                'Start all containers',
+                lambda h: docker.start_all_containers(h))
+
+    @tree.command(name="upall", description='up all containers')
+    async def up_all(interaction: discord.Interaction):
+        state.stale_containers()
+        await execute(interaction, 
+                'Up all containers',
+                lambda h: docker.up_all_containers(h))
+
+    @tree.command(name="stopall", description='start all containers')
+    async def stop_all(interaction: discord.Interaction):
+        await execute(interaction, 
+                'Stop all containers',
+                lambda h: docker.stop_all_containers(h))
+
+    @tree.command(name="downall", description='down all containers')
+    async def down_all(interaction: discord.Interaction):
+        state.stale_containers()
+        await execute(interaction, 
+                'Down all containers',
+                lambda h: docker.down_all_containers(h))
 
     @tree.command(name="status", description='get bot status')
     async def status(interaction: discord.Interaction):
         await interaction.response.send_message('#TODO')
 
 
-    async def container_list_autocompletion(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
-        data = [app_commands.Choice(name=f'{i}', value=str(i)) for i in state.get_containers() if current.lower() in f'{i}'.lower()]
-        return data
+
+    @tree.command(name="start", description='start a container')
+    @app_commands.describe(container='Container to start')
+    @app_commands.autocomplete(container=container_list_autocompletion)
+    async def start(interaction: discord.Interaction, container: str):
+        await execute(interaction, 
+                      f'Start container {container}',
+                      lambda h: docker.start_container(container, h))
+
+    @tree.command(name="up", description='up a container')
+    @app_commands.describe(container='Container to up')
+    @app_commands.autocomplete(container=container_list_autocompletion)
+    async def up(interaction: discord.Interaction, container: str):
+        state.stale_containers()
+        await execute(interaction, 
+                      f'Up container {container}',
+                      lambda h: docker.up_container(container, h))
+
+    @tree.command(name="stop", description='stop a container')
+    @app_commands.describe(container='Container to stop')
+    @app_commands.autocomplete(container=container_list_autocompletion)
+    async def stop(interaction: discord.Interaction, container: str):
+        await execute(interaction, 
+                      f'Stop container {container}',
+                      lambda h: docker.stop_container(container, h))
+
+    @tree.command(name="down", description='down a container')
+    @app_commands.describe(container='Container to down')
+    @app_commands.autocomplete(container=container_list_autocompletion)
+    async def down(interaction: discord.Interaction, container: str):
+        state.stale_containers()
+        await execute(interaction, 
+                      f'Down container {container}',
+                      lambda h: docker.down_container(container, h))
+
 
     @tree.command(name="update", description='update a container')
     @app_commands.describe(container='Container to update')
     @app_commands.autocomplete(container=container_list_autocompletion)
     async def update(interaction: discord.Interaction, container: str):
-        state.stale_containers()
-        status_message = StatusMessage(f'Update container {container}')
-        await interaction.response.send_message(status_message.render())
+        await execute(interaction, 
+                      f'Update container {container}',
+                      lambda h: docker.update_container(container, h))
 
-        async def hook(log_segment):
-            nonlocal status_message
-            status_message.add_logs(log_segment)
-            await interaction.edit_original_response(content=status_message.render())
-        try:
-            await docker.update_container(container, hook)
-            status_message.finish()
-        except:
-            status_message.fail()
-        await interaction.edit_original_response(content=status_message.render())
+    @tree.command(name="recreate", description='recreate a container')
+    @app_commands.describe(container='Container to recreate')
+    @app_commands.autocomplete(container=container_list_autocompletion)
+    async def recreate(interaction: discord.Interaction, container: str):
+        await execute(interaction, 
+                      f'Recreate container {container}',
+                      lambda h: docker.recreate_container(container, h))
 
     return client
 
