@@ -1,0 +1,12 @@
+tasks:
+  - type: docker-build
+    image: gabbro-bot
+    auto_push_on:
+      - source: push
+        has_tag: true
+        tag_source: tag
+      - source: push
+        has_tag: true
+        tag_source: latest
+    registries:
+      - gitlab

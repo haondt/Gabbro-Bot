@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  gabbro-bot:
+    image: registry.gitlab.com/haondt/cicd/registry/gabbro-bot:1.0.0
+    container_name: gabbro-bot
+    environment:
+      COM_GABBRO_DISCORD_TOKEN: ""
+      COM_GABBRO_DOCKER_HOST: ""
+      COM_GABBRO_DOCKER_USER: ""
+      COM_GABBRO_DOCKER_PASSWORD: ""
+      COM_GABBRO_DOCKER_PATH: ""
