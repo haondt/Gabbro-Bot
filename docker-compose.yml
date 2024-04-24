@@ -1,7 +1,7 @@
 version: '3.8'
 services:
   gabbro-bot:
-    image: registry.gitlab.com/haondt/cicd/registry/gabbro-bot:1.0.0
+    image: registry.gitlab.com/haondt/cicd/registry/gabbro-bot:latest
     container_name: gabbro-bot
     environment:
       COM_GABBRO_DISCORD_TOKEN: ""
