@@ -1,7 +1,7 @@
 tasks:
   - type: docker-build
     image: gabbro-bot
-    auto_push_on:
+    auto:
       - source: push
         has_tag: true
         tag_source: tag
