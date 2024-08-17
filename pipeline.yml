@@ -1,6 +1,8 @@
 tasks:
   - type: docker-build
     image: gabbro-bot
+    platform:
+      - linux/arm64
     auto:
       - source: push
         has_tag: true
