@@ -1,7 +1,7 @@
 tasks:
   - type: docker-build
     image: gabbro-bot
-    platform:
+    platforms:
       - linux/arm64
     auto:
       - source: push
